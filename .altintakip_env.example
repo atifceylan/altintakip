@@ -1,0 +1,7 @@
+# Veritabanı Ayarları
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=altintakip_app
+DB_PASSWORD=your_password_here
+DB_NAME=altintakip
+DB_SSLMODE=disable
