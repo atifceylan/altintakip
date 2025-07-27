@@ -26,6 +26,7 @@ go.work.sum
 
 # env file
 .env
+.altintakip_env
 
 # Editor/IDE
 # .idea/
