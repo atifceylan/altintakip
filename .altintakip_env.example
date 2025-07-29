@@ -1,7 +1,26 @@
-# Veritabanı Ayarları
-DB_HOST=localhost
-DB_PORT=5432
-DB_USER=altintakip_app
-DB_PASSWORD=your_password_here
-DB_NAME=altintakip
-DB_SSLMODE=disable
+# Altın Takip Uygulaması Yapılandırma Dosyası
+# Bu dosyayı .altintakip_env olarak kopyalayın ve kendi değerlerinizi girin
+
+# Veritabanı Yapılandırması
+# SQLite veritabanı dosyasının tam yolu
+# Boş bırakılırsa varsayılan: ~/altintakip/altintakip.db
+DB_PATH=
+
+# Log Dosyası Yapılandırması  
+# Log dosyasının tam yolu
+# Boş bırakılırsa varsayılan: ~/altintakip/altintakip.log
+LOG_PATH=
+
+# Uygulama Veri Dizini
+# Uygulamanın tüm verilerini saklayacağı ana dizin
+# Boş bırakılırsa varsayılan: ~/altintakip
+APP_DATA_DIR=
+
+# API Yapılandırması (Opsiyonel)
+# Altın fiyatları için kullanılacak API endpoint
+# Boş bırakılırsa varsayılan API kullanılır
+API_ENDPOINT=
+
+# Günlükleme Seviyesi (DEBUG, INFO, WARN, ERROR)
+# Boş bırakılırsa varsayılan: ERROR
+LOG_LEVEL=

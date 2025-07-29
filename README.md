@@ -1,46 +1,28 @@
 # 🏦 Altın Takip - Kişisel Altın ve Döviz Envanter Takip Sistemi
 
-Bu uygulama, kişisel altın ve döviz envanterinizi takip etmenizi sağlayan bir CLI (komut satırı) uygulamasıdır. PostgreSQL veritabanı ve GORM ORM kullanarak verilerinizi güvenle saklar ve `http://data.altinkaynak.com/DataService.asmx` servisinden güncel fiyatları çekerek envanterinizin güncel değerini hesaplar.
+Bu uygulama, kişisel altın ve döviz envanterinizi takip etmenizi sağlayan bir TUI (Terminal User Interface) uygulamasıdır. SQLite veritabanı ve GORM ORM kullanarak verilerinizi güvenle saklar ve `http://data.altinkaynak.com/DataService.asmx` servisinden güncel fiyatları çekerek envanterinizin güncel değerini hesaplar.
 
 ## ✨ Özellikler
 
+- 🖥️ **İnteraktif TUI**: Ncurses benzeri terminal arayüzü (tview framework)
 - 📊 **Envanter Takibi**: Altın ve döviz envanterinizi detaylı şekilde kaydedin
 - 💰 **Güncel Fiyatlar**: API'den otomatik güncel fiyat çekme
 - 📈 **Kar/Zarar Hesaplama**: Alış fiyatı ile güncel fiyat karşılaştırması
-- 🎨 **CLI Tablosu**: Temiz ve düzenli tablo görünümü
-- � **Binli Grup Formatı**: Türk finansal standartlarında sayı gösterimi
-- 📊 **Grup Analizi**: Kod bazlı grup analizi ve toplam değerler
-- �🔄 **Otomatik Güncelleme**: Her çalıştırmada fiyatları günceller
-- � **Liste Modu**: API çağrısı yapmadan mevcut verileri görüntüleme
-- �🗄️ **PostgreSQL**: Güvenli veri saklama
+- ⌨️ **Klavye Kısayolları**: F1, F5, Ctrl+L, Ctrl+Q ile hızlı navigasyon
+- 🎨 **Renkli Tablo**: Kar/zarar durumuna göre renk kodları
+- 📊 **Canlı Özet Panel**: Anlık toplam değerler ve istatistikler
+- 🔄 **Otomatik Güncelleme**: Periyodik fiyat güncellemesi
+- 🗄️ **SQLite**: Hafif ve taşınabilir veri saklama
+- 💾 **Yerel Veri Modu**: API çağrısı yapmadan offline çalışma
+- 📁 **Otomatik Klasör**: Kullanıcı dizininde otomatik altintakip klasörü oluşturma
 
 ## 🚀 Kurulum
 
 ### Gereksinimler
 
 - Go 1.21 veya üstü
-- PostgreSQL veritabanı
 
-### 1. PostgreSQL Kurulumu
-
-macOS için:
-```bash
-brew install postgresql
-brew services start postgresql
-```
-
-Debian/Ubuntu için:
-```bash
-apt install postgresql-XX #debian 12 icin postgresql-15
-
-# Veritabanı oluşturma
-sudo su - postgres
-psql
-create user altintakip_app password '<your_password_here>';
-create database altintakip owner altintakip_app;
-```
-
-### 2. Proje Kurulumu
+### 1. Proje Kurulumu
 
 ```bash
 # Projeyi indirin
@@ -49,79 +31,104 @@ cd altintakip
 
 # Bağımlılıkları yükleyin
 go mod download
-
-# Konfigürasyon dosyasını oluşturun
-touch .altintakip_env
-# .altintakip_env dosyasını düzenleyerek veritabanı bilgilerinizi girin
 ```
 
-### 3. Konfigürasyon Dosyası (.altintakip_env)
+### 2. Konfigürasyon (İsteğe Bağlı)
 
-Uygulama konfigürasyon dosyasını önce mevcut dizinde, sonra home dizininde arar. `.altintakip_env` dosyasını oluşturun ve veritabanı bilgilerinizi güncelleyin:
+Uygulama ilk çalıştırıldığında kullanıcı dizininizde `~/altintakip` klasörünü otomatik olarak oluşturur ve tüm verileri burada saklar.
+
+Varsayılan ayarları değiştirmek için `.altintakip_env` dosyası oluşturabilirsiniz:
+
+```bash
+# Örnek konfigürasyon dosyasını kopyalayın
+cp .altintakip_env.example .altintakip_env
+```
+
+`.altintakip_env` dosyası içeriği:
 
 ```env
-DB_HOST=localhost
-DB_PORT=5432
-DB_USER=altintakip_app
-DB_PASSWORD=your_password_here
-DB_NAME=altintakip
-DB_SSLMODE=disable
+# Veritabanı dosyası yolu (varsayılan: ~/altintakip/altintakip.db)
+DB_PATH=
+
+# Log dosyası yolu (varsayılan: ~/altintakip/altintakip.log)  
+LOG_PATH=
+
+# Uygulama veri dizini (varsayılan: ~/altintakip)
+APP_DATA_DIR=
+
+# API endpoint (opsiyonel)
+API_ENDPOINT=
+
+# Log seviyesi (DEBUG, INFO, WARN, ERROR)
+LOG_LEVEL=
 ```
+
+**Not:** SQLite kullandığımız için harici veritabanı kurulumuna gerek yoktur. Veritabanı dosyası otomatik olarak oluşturulur.
 
 ## 🎯 Kullanım
 
-### Normal Mod (API Çağrısı ile)
-
-Uygulamayı çalıştırmak için:
+### TUI Uygulamasını Başlatma
 
 ```bash
+# Normal mod (API'den güncel fiyatları çeker)
 go run main.go
-```
 
-### Liste Modu (Sadece Mevcut Veriler)
-
-API çağrısı yapmadan mevcut verileri görüntülemek için:
-
-```bash
+# Liste modu (offline - sadece veritabanındaki veriler gösterilir)
 go run main.go list
 ```
+
+### Çalışma Modları
+
+#### **Normal Mod**
+- API'den güncel fiyatları otomatik çeker
+- 5 dakikada bir otomatik fiyat güncelleme yapar
+- F5 ile manuel fiyat güncelleme yapılabilir
+- Add/Edit işlemlerinde güncel fiyat girilmezse API'den çekilir
+
+#### **Liste Modu (Offline)**
+- Sadece veritabanındaki mevcut veriler gösterilir
+- API çağrısı yapılmaz (internet bağlantısı gerekmez)
+- Otomatik fiyat güncelleme devre dışıdır
+- F5 tuşu devre dışıdır
+- Add/Edit işlemlerinde güncel fiyat mutlaka girilmelidir
+
+### Klavye Kısayolları
+
+- **F1**: Yardım penceresini açar/kapatır
+- **F5**: Verileri API'den yeniler (sadece normal modda)
+- **Ctrl+L**: Yerel veri modunu açar/kapatır (offline)
+- **Ctrl+Q**: Uygulamadan çıkar
+- **ESC**: Sadece modal pencerelerini kapatır (uygulamayı sonlandırmaz)
+- **Tab**: Tablolar arasında geçiş yapar
+
+### TUI Arayüzü
+
+Uygulama şu bölümlerden oluşur:
+
+1. **Ana Tablo**: Envanter verilerini gösterir
+2. **Grup Tablosu**: Kod bazlı gruplandırılmış veriler
+3. **Durum Çubuğu**: Güncel durum bilgileri
+4. **Özet Paneli**: Toplam değerler ve istatistikler
+5. **Yardım Modal**: Klavye kısayolları rehberi
 
 ### İlk Çalıştırma
 
 Uygulama ilk çalıştırıldığında:
-1. Veritabanı tablolarını otomatik oluşturur
-2. Örnek envanter verileri ekler (boş ise)
-3. API'den güncel fiyatları çeker
-4. Güzel formatlı tablo olarak sonuçları gösterir
+1. `~/altintakip` dizinini otomatik oluşturur
+2. Veritabanı dosyasını bu dizinde oluşturur
+3. Log dosyasını bu dizinde oluşturur
+4. Veritabanı tablolarını otomatik oluşturur
+5. TUI arayüzünü başlatır
+6. API'den güncel fiyatları çeker
+7. İnteraktif tablo olarak sonuçları gösterir
 
-### Örnek Çıktı
+## 📁 Veri Dizini Yapısı
 
 ```
-💰 KİŞİSEL ALTIN VE DÖVİZ ENVANTERİ
-═══════════════════════════════════════════════════════════════════════════════════════════════════
-
-TÜR      CİNS                 MİKTAR     BİRİM    ALIŞ TARİHİ  ALIŞ FİYATI (₺) TOPLAM ALIŞ (₺) GÜNCEL FİYAT (₺) GÜNCEL TUTAR (₺) KAR/ZARAR (₺)  KAR/ZARAR %
-─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-Altın    22 Ayar Külçe       10.00      gram     15.01.2024   2.250           22.500          2.485,26         24.853           +2.353         +10.46%    
-Altın    Çeyrek Altın        5.00       adet     20.02.2024   2.800           14.000          3.151,72         15.759           +1.759         +12.56%    
-
-📋 GRUP ANALİZİ
-═══════════════════════════════════════════════════════════════════════════════════════════════════
-
-TÜR      CİNS            TOPLAM MİKTAR BİRİM    ORT. ALIŞ FİYATI (₺) TOPLAM ALIŞ (₺) TOPLAM GÜNCEL (₺) TOPLAM KAR/ZARAR (₺) KAR/ZARAR %
-────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-Altın    22 Ayar Külçe  10.00         gram     2.250               22.500          24.853            +2.353             +10.46%   
-Altın    Çeyrek Altın   5.00          adet     2.800               14.000          15.759            +1.759             +12.56%   
-
-📊 ÖZET BİLGİLER
-═══════════════════════════════════════════════════════════════════════════════════════════════════
-
-TOPLAM ALIŞ TUTARI (₺)    TOPLAM GÜNCEL TUTAR (₺)  TOPLAM KAR/ZARAR (₺)    TOPLAM KAR/ZARAR %      
-─────────────────────────────────────────────────────────────────────────────────────────
-36.500                   40.612                   +4.112                  +11.27%                
-
-🕐 Son güncelleme: 15:04:05 - 27.01.2025
-📊 Veriler data.altinkaynak.com'dan alınmaktadır
+~/altintakip/              # Ana uygulama dizini
+├── altintakip.db         # SQLite veritabanı
+├── altintakip.log        # Log dosyası
+└── .altintakip_env       # Konfigürasyon dosyası (opsiyonel)
 ```
 
 ## 📁 Proje Yapısı
@@ -139,11 +146,9 @@ altintakip/
 │   ├── services/       # İş mantığı
 │   │   ├── altin_kaynak.go
 │   │   └── envanter_service.go
-│   └── cli/            # CLI görüntüleme
-│       └── table.go
-├── .altintakip_env     # Konfigürasyon dosyası
-├── .github/
-│   └── copilot-instructions.md
+│   └── tui/            # TUI arayüzü
+│       └── app.go
+├── .altintakip_env.example  # Örnek konfigürasyon
 ├── go.mod              # Go modül dosyası
 └── README.md          # Bu dosya
 ```
@@ -232,20 +237,19 @@ Envanter tablosu şu alanları içerir:
 
 ## 🐛 Sorun Giderme
 
-### Konfigürasyon Dosyası Hatası
+### Uygulama Dizini Oluşturma Hatası
 ```bash
-HATA: .altintakip_env dosyası bulunamadı
+HATA: Uygulama veri dizini oluşturulamadı
 ```
-- Mevcut dizinde veya home dizininde `.altintakip_env` dosyası oluşturun
-- Dosyada veritabanı bağlantı bilgilerini kontrol edin
+- Kullanıcı dizininizde yazma izniniz olduğundan emin olun
+- `~/altintakip` klasörünü manuel olarak oluşturmayı deneyin
 
-### Veritabanı Bağlantı Hatası
+### Veritabanı Dosyası Hatası
 ```bash
-ERRO[0000] veritabanı bağlantısı kurulamadı
+HATA: SQLite veritabanı bağlantısı kurulamadı
 ```
-- PostgreSQL'in çalıştığından emin olun: `brew services start postgresql`
-- `.altintakip_env` dosyasındaki veritabanı bilgilerini kontrol edin
-- Veritabanının mevcut olduğundan emin olun: `createdb altintakip`
+- `~/altintakip` dizininde yazma izniniz olduğundan emin olun
+- `.altintakip_env` dosyasında belirtilen dizinin mevcut olduğundan emin olun
 
 ### API Hatası
 ```bash
@@ -253,7 +257,12 @@ UYARI: fiyatlar alınamadı
 ```
 - İnternet bağlantınızı kontrol edin
 - API servisi geçici olarak kapalı olabilir
-- Liste modunu kullanarak mevcut verilerle çalışabilirsiniz: `go run main.go list`
+- Ctrl+L ile yerel veri modunu kullanarak mevcut verilerle çalışabilirsiniz
+
+### Çıkış Sorunu
+- Uygulama artık ESC tuşu ile kapanmaz
+- **Sadece Ctrl+Q** ile çıkış yapabilirsiniz
+- ESC tuşu sadece açık modal pencerelerini kapatır
 
 ## 🤝 Katkıda Bulunma
 

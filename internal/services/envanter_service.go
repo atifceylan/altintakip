@@ -60,7 +60,7 @@ func (s *EnvanterService) UpdateGuncelFiyatlar() error {
 		}
 
 		envanterler[i].GuncelFiyat = guncelFiyat
-		envanterler[i].APIKaynak = "data.altinkaynak.com"
+		//envanterler[i].APIKaynak = "data.altinkaynak.com"
 		envanterler[i].GuncelDegerleriHesapla()
 
 		// Veritabanında güncelle
@@ -76,23 +76,36 @@ func (s *EnvanterService) UpdateGuncelFiyatlar() error {
 
 // AddEnvanter yeni envanter kaydı ekler
 func (s *EnvanterService) AddEnvanter(envanter *models.Envanter) error {
+	return s.AddEnvanterWithMode(envanter, false)
+}
+
+// AddEnvanterWithMode yeni envanter kaydı ekler (liste modu parametreli)
+func (s *EnvanterService) AddEnvanterWithMode(envanter *models.Envanter, isListMode bool) error {
 	// Toplam alış tutarını hesapla
 	envanter.ToplamAlis = envanter.Miktar * envanter.AlisFiyati
 
-	// Güncel fiyatı al ve hesapla
-	fiyatlar, err := s.altinService.GetFiyatlar()
-	if err != nil {
-		log.Printf("UYARI: Güncel fiyat alınamadı, sadece alış bilgileri kaydediliyor: %v", err)
-	} else {
-		guncelFiyat, err := s.altinService.GetFiyatByType(fiyatlar, envanter.Kod)
-		if err == nil {
-			envanter.GuncelFiyat = guncelFiyat
-			envanter.APIKaynak = "data.altinkaynak.com"
-			envanter.GuncelDegerleriHesapla()
+	// Liste modunda değilse ve güncel fiyat girilmemişse (0 ise) API'den çek
+	if !isListMode && envanter.GuncelFiyat == 0 {
+		fiyatlar, err := s.altinService.GetFiyatlar()
+		if err != nil {
+			log.Printf("UYARI: Güncel fiyat alınamadı, sadece alış bilgileri kaydediliyor: %v", err)
+		} else {
+			guncelFiyat, err := s.altinService.GetFiyatByType(fiyatlar, envanter.Kod)
+			if err == nil {
+				envanter.GuncelFiyat = guncelFiyat
+				log.Printf("Güncel fiyat API'den çekildi: %s = %.2f", envanter.Kod, guncelFiyat)
+			} else {
+				log.Printf("UYARI: Kod %s için güncel fiyat bulunamadı: %v", envanter.Kod, err)
+			}
 		}
+	} else if isListMode {
+		log.Printf("Liste modu: Güncel fiyat API'den çekilmeyecek")
 	}
 
-	err = database.GetDB().Create(envanter).Error
+	// Güncel değerleri hesapla
+	envanter.GuncelDegerleriHesapla()
+
+	err := database.GetDB().Create(envanter).Error
 	if err != nil {
 		return fmt.Errorf("envanter kaydedilemedi: %w", err)
 	}
@@ -114,11 +127,41 @@ func (s *EnvanterService) DeleteEnvanter(id uint) error {
 
 // UpdateEnvanter envanter kaydını günceller
 func (s *EnvanterService) UpdateEnvanter(envanter *models.Envanter) error {
+	return s.UpdateEnvanterWithMode(envanter, false)
+}
+
+// UpdateEnvanterWithMode envanter kaydını günceller (liste modu parametreli)
+func (s *EnvanterService) UpdateEnvanterWithMode(envanter *models.Envanter, isListMode bool) error {
+	// Toplam alış tutarını yeniden hesapla
+	envanter.ToplamAlis = envanter.Miktar * envanter.AlisFiyati
+
+	// Liste modunda değilse ve güncel fiyat 0 ise API'den çek
+	if !isListMode && envanter.GuncelFiyat == 0 {
+		fiyatlar, err := s.altinService.GetFiyatlar()
+		if err != nil {
+			log.Printf("UYARI: Güncel fiyat alınamadı: %v", err)
+		} else {
+			guncelFiyat, err := s.altinService.GetFiyatByType(fiyatlar, envanter.Kod)
+			if err == nil {
+				envanter.GuncelFiyat = guncelFiyat
+				log.Printf("Güncel fiyat API'den çekildi: %s = %.2f", envanter.Kod, guncelFiyat)
+			} else {
+				log.Printf("UYARI: Kod %s için güncel fiyat bulunamadı: %v", envanter.Kod, err)
+			}
+		}
+	} else if isListMode {
+		log.Printf("Liste modu: Güncel fiyat API'den çekilmeyecek")
+	}
+
+	// Güncel değerleri hesapla
+	envanter.GuncelDegerleriHesapla()
+
 	err := database.GetDB().Save(envanter).Error
 	if err != nil {
 		return fmt.Errorf("envanter güncellenemedi: %w", err)
 	}
 
+	log.Printf("Envanter kaydı güncellendi: %s %s (%.2f %s)", envanter.Tur, envanter.Cins, envanter.Miktar, envanter.Birim)
 	return nil
 }
 
@@ -153,7 +196,7 @@ func (s *EnvanterService) GetToplamDegerler() (map[string]float64, error) {
 // GetKodBazliGruplar kod bazlı gruplu verileri hesaplar
 func (s *EnvanterService) GetKodBazliGruplar() (map[string]map[string]interface{}, error) {
 	var envanterler []models.Envanter
-	err := database.GetDB().Find(&envanterler).Error
+	err := database.GetDB().Order("tur asc, cins asc").Find(&envanterler).Error
 	if err != nil {
 		return nil, fmt.Errorf("envanter kayıtları getirilemedi: %w", err)
 	}
@@ -206,4 +249,28 @@ func (s *EnvanterService) GetKodBazliGruplar() (map[string]map[string]interface{
 	}
 
 	return gruplar, nil
+}
+
+// GetAllEnvanterFromDB sadece veritabanından envanter kayıtlarını getirir (API çağrısı yapmaz)
+func (s *EnvanterService) GetAllEnvanterFromDB() ([]models.Envanter, error) {
+	var envanter []models.Envanter
+
+	err := database.GetDB().Order("tur asc, alis_tarihi asc").Find(&envanter).Error
+	if err != nil {
+		return nil, fmt.Errorf("envanter kayıtları getirilemedi: %w", err)
+	}
+
+	log.Printf("Veritabanından %d envanter kaydı alındı", len(envanter))
+	return envanter, nil
+}
+
+// GetEnvanterByID ID'ye göre envanter kaydını getirir
+func (s *EnvanterService) GetEnvanterByID(id uint) (*models.Envanter, error) {
+	var envanter models.Envanter
+	err := database.GetDB().First(&envanter, id).Error
+	if err != nil {
+		return nil, fmt.Errorf("envanter kaydı bulunamadı: %w", err)
+	}
+
+	return &envanter, nil
 }

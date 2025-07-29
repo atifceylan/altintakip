@@ -194,6 +194,9 @@ func (s *AltinKaynakService) parseAltinData(dataStr string, fiyatlar *AltinFiyat
 		satis := parseFloat(kur.Satis)
 
 		switch kur.Kod {
+		case "B": // 22 Ayar Bilezik (Gram)
+			fiyatlar.Gram22AyarAlis = alis
+			fiyatlar.Gram22AyarSatis = satis
 		case "B_T": // 22 Ayar Hurda
 			fiyatlar.Gram22HurdaAyarAlis = alis
 			fiyatlar.Gram22HurdaAyarSatis = satis
@@ -209,13 +212,13 @@ func (s *AltinKaynakService) parseAltinData(dataStr string, fiyatlar *AltinFiyat
 		case "T": // Tam Altın (Teklik)
 			fiyatlar.TamAltinAlis = alis
 			fiyatlar.TamAltinSatis = satis
-		case "GA": // Gram Altın
+		case "GA": // Gram Altın (22 ayar)
 			fiyatlar.Gram22AyarAlis = alis
 			fiyatlar.Gram22AyarSatis = satis
-		case "GAT": // Gram Toptan
+		case "GAT": // Gram Toptan (Külçe)
 			fiyatlar.KulceAltinAlis = alis
 			fiyatlar.KulceAltinSatis = satis
-		case "HH_T": // Has Toptan (24 ayar benzeri)
+		case "HH_T": // Has Toptan (24 ayar)
 			fiyatlar.Gram24AyarAlis = alis
 			fiyatlar.Gram24AyarSatis = satis
 		}

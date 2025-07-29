@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 
 	"altintakip/internal/models"
 
-	"gorm.io/driver/postgres"
+	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
@@ -15,39 +16,37 @@ import (
 // DB global veritabanı bağlantısı
 var DB *gorm.DB
 
-// Config veritabanı yapılandırma yapısı
-type Config struct {
-	Host     string
-	Port     string
-	User     string
-	Password string
-	DBName   string
-	SSLMode  string
-}
-
 // Connect veritabanı bağlantısını kurar
 func Connect() error {
-	config := Config{
-		Host:     getEnv("DB_HOST", "localhost"),
-		Port:     getEnv("DB_PORT", "5432"),
-		User:     getEnv("DB_USER", ""),
-		Password: getEnv("DB_PASSWORD", ""),
-		DBName:   getEnv("DB_NAME", "altintakip"),
-		SSLMode:  getEnv("DB_SSLMODE", "disable"),
+	// Kullanıcı dizininde altintakip klasörünü varsayılan yol olarak kullan
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("kullanıcı dizini alınamadı: %w", err)
 	}
 
-	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
-		config.Host, config.Port, config.User, config.Password, config.DBName, config.SSLMode)
+	appDataDir := getEnv("APP_DATA_DIR", filepath.Join(homeDir, "altintakip"))
+	defaultDBPath := filepath.Join(appDataDir, "altintakip.db")
 
-	var err error
-	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
+	// SQLite veritabanı dosyasının yolu
+	dbPath := getEnv("DB_PATH", defaultDBPath)
+
+	// Veritabanı dosyasının dizinini oluştur
+	dbDir := filepath.Dir(dbPath)
+	if dbDir != "." && dbDir != "" {
+		if err := os.MkdirAll(dbDir, 0755); err != nil {
+			return fmt.Errorf("veritabanı dizini oluşturulamadı: %w", err)
+		}
+	}
+
+	var dbErr error
+	DB, dbErr = gorm.Open(sqlite.Open(dbPath), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Error),
 	})
-	if err != nil {
-		return fmt.Errorf("veritabanı bağlantısı kurulamadı: %w", err)
+	if dbErr != nil {
+		return fmt.Errorf("SQLite veritabanı bağlantısı kurulamadı: %w", dbErr)
 	}
 
-	log.Println("Veritabanı bağlantısı başarılı")
+	log.Printf("SQLite veritabanı bağlantısı başarılı: %s", dbPath)
 	return nil
 }
 
