@@ -35,8 +35,8 @@ go.work.sum
 altintakip.db
 
 # Editor/IDE
-# .idea/
-# .vscode/
+.idea/
+.vscode/
 
 # Log files
 *.log
