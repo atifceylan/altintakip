@@ -8,12 +8,12 @@ Bu uygulama, kişisel altın ve döviz envanterinizi takip etmenizi sağlayan bi
 - 📊 **Envanter Takibi**: Altın ve döviz envanterinizi detaylı şekilde kaydedin
 - 💰 **Güncel Fiyatlar**: API'den otomatik güncel fiyat çekme
 - 📈 **Kar/Zarar Hesaplama**: Alış fiyatı ile güncel fiyat karşılaştırması
-- ⌨️ **Klavye Kısayolları**: F1, F5, Ctrl+L, Ctrl+Q ile hızlı navigasyon
-- 🎨 **Renkli Tablo**: Kar/zarar durumuna göre renk kodları
+- ⌨️ **Klavye Kısayolları**: F5: Yenile, Tab: Tablolar Arası Geçiş, E: Ekle, D: Düzenle, S: Sil, Ctrl+Q: Çıkış
+- 🎨 **Renkli Tablo**: Kâr/zarar durumuna göre renklendirme
 - 📊 **Canlı Özet Panel**: Anlık toplam değerler ve istatistikler
 - 🔄 **Otomatik Güncelleme**: Periyodik fiyat güncellemesi
 - 🗄️ **SQLite**: Hafif ve taşınabilir veri saklama
-- 💾 **Yerel Veri Modu**: API çağrısı yapmadan offline çalışma
+- 💾 **Yerel Veri Modu**: API çağrısı yapmadan offline çalışabilme (liste modu)
 - 📁 **Otomatik Klasör**: Kullanıcı dizininde otomatik altintakip klasörü oluşturma
 
 ## 🚀 Kurulum
@@ -94,12 +94,10 @@ go run main.go list
 
 ### Klavye Kısayolları
 
-- **F1**: Yardım penceresini açar/kapatır
 - **F5**: Verileri API'den yeniler (sadece normal modda)
-- **Ctrl+L**: Yerel veri modunu açar/kapatır (offline)
 - **Ctrl+Q**: Uygulamadan çıkar
 - **ESC**: Sadece modal pencerelerini kapatır (uygulamayı sonlandırmaz)
-- **Tab**: Tablolar arasında geçiş yapar
+- **Tab**: Tablolar veya inputlar arasında geçiş yapar
 
 ### TUI Arayüzü
 
@@ -183,10 +181,7 @@ Uygulama `data.altinkaynak.com` servisinden SOAP protokolü ile veri çeker. Her
 
 ### Finansal Sayı Formatı
 
-- **Binli Gruplar**: Türk standardında nokta ile ayrım (1.234.567)
-- **Ondalık**: Türk standardında virgül ile ayrım (1.234,56)
-- **Koşullu Ondalık**: Tam sayılarda .00 gösterilmez (1.234 ₺)
-- **Para Birimi**: Başlıklarda parantez içinde (₺)
+- **Para Birimi**: Yalnızca `Türk Lirası` formatında çalışır.
 
 ### Tablo Özellikleri
 
@@ -198,6 +193,8 @@ Uygulama `data.altinkaynak.com` servisinden SOAP protokolü ile veri çeker. Her
 
 - **Normal Mod**: `go run main.go` - API'den güncel fiyatları çeker
 - **Liste Modu**: `go run main.go list` - Sadece veritabanındaki verileri gösterir
+- **Build Alma**: `./build.sh` - ./bin/ dizini altina `altintakip` binary dosyası oluşturur. `./bin/altintakip` yazarak çalıştırabilirsiniz.
+- **Kurulum Yapma (Linux, BSD ve Macos için)**: `./install.sh` - /usr/local/bin dizini altina `altintakip` binary dosyası oluşturur. Herhangi bir path altındayken `altintakip` yazarak global bir uygulama olarak çalıştırabilirsiniz.
 
 ## 🔧 Geliştirme
 
@@ -232,7 +229,7 @@ Envanter tablosu şu alanları içerir:
 - **toplam_alis**: Toplam alış tutarı
 - **guncel_fiyat**: Güncel birim fiyatı
 - **guncel_tutar**: Güncel toplam tutar
-- **kar_zarar**: Kar/zarar miktarı
+- **kar_zarar**: Kâr/zarar miktarı
 - **kar_zarar_yuzde**: Kar/zarar yüzdesi
 
 ## 🐛 Sorun Giderme
@@ -257,12 +254,6 @@ UYARI: fiyatlar alınamadı
 ```
 - İnternet bağlantınızı kontrol edin
 - API servisi geçici olarak kapalı olabilir
-- Ctrl+L ile yerel veri modunu kullanarak mevcut verilerle çalışabilirsiniz
-
-### Çıkış Sorunu
-- Uygulama artık ESC tuşu ile kapanmaz
-- **Sadece Ctrl+Q** ile çıkış yapabilirsiniz
-- ESC tuşu sadece açık modal pencerelerini kapatır
 
 ## 🤝 Katkıda Bulunma
 
