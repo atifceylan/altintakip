@@ -29,6 +29,13 @@ go.work.sum
 .env
 .altintakip_env
 
+# SQLite database
+*.db
+altintakip.db
+
 # Editor/IDE
 # .idea/
 # .vscode/
+
+# Log files
+*.log
