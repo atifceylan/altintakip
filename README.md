@@ -2,6 +2,8 @@
 
 Bu uygulama, kişisel altın ve döviz envanterinizi takip etmenizi sağlayan bir TUI (Terminal User Interface) uygulamasıdır. SQLite veritabanı ve GORM ORM kullanarak verilerinizi güvenle saklar ve `http://data.altinkaynak.com/DataService.asmx` servisinden güncel fiyatları çekerek envanterinizin güncel değerini hesaplar.
 
+![Image](https://github.com/user-attachments/assets/d8adee3a-7594-4c85-bd0d-9cdae19274a8)
+
 ## ✨ Özellikler
 
 - 🖥️ **İnteraktif TUI**: Ncurses benzeri terminal arayüzü (tview framework)
