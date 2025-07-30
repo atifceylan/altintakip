@@ -26,8 +26,12 @@ type AltinFiyatlari struct {
 	TamAltinSatis        float64
 	KulceAltinAlis       float64
 	KulceAltinSatis      float64
+	GramToptanAltinAlis  float64
+	GramToptanAltinSatis float64
 	Gram22AyarAlis       float64
 	Gram22AyarSatis      float64
+	Bilezik22AyarAlis    float64
+	Bilezik22AyarSatis   float64
 	Gram22HurdaAyarAlis  float64
 	Gram22HurdaAyarSatis float64
 	Gram24AyarAlis       float64
@@ -195,8 +199,8 @@ func (s *AltinKaynakService) parseAltinData(dataStr string, fiyatlar *AltinFiyat
 
 		switch kur.Kod {
 		case "B": // 22 Ayar Bilezik (Gram)
-			fiyatlar.Gram22AyarAlis = alis
-			fiyatlar.Gram22AyarSatis = satis
+			fiyatlar.Bilezik22AyarAlis = alis
+			fiyatlar.Bilezik22AyarSatis = satis
 		case "B_T": // 22 Ayar Hurda
 			fiyatlar.Gram22HurdaAyarAlis = alis
 			fiyatlar.Gram22HurdaAyarSatis = satis
@@ -216,8 +220,8 @@ func (s *AltinKaynakService) parseAltinData(dataStr string, fiyatlar *AltinFiyat
 			fiyatlar.Gram22AyarAlis = alis
 			fiyatlar.Gram22AyarSatis = satis
 		case "GAT": // Gram Toptan (Külçe)
-			fiyatlar.KulceAltinAlis = alis
-			fiyatlar.KulceAltinSatis = satis
+			fiyatlar.GramToptanAltinAlis = alis
+			fiyatlar.GramToptanAltinSatis = satis
 		case "HH_T": // Has Toptan (24 ayar)
 			fiyatlar.Gram24AyarAlis = alis
 			fiyatlar.Gram24AyarSatis = satis
@@ -264,7 +268,7 @@ func (s *AltinKaynakService) GetFiyatByType(fiyatlar *AltinFiyatlari, kod string
 	switch kod {
 	// Altın kodları
 	case "B": // 22 Ayar Bilezik
-		return fiyatlar.Gram22AyarAlis, nil
+		return fiyatlar.Bilezik22AyarAlis, nil
 	case "B_T": // 22 Ayar Hurda
 		return fiyatlar.Gram22HurdaAyarAlis, nil
 	case "C": // Çeyrek Altın
@@ -278,7 +282,7 @@ func (s *AltinKaynakService) GetFiyatByType(fiyatlar *AltinFiyatlari, kod string
 	case "GA": // Gram Altın
 		return fiyatlar.Gram22AyarAlis, nil
 	case "GAT": // Gram Toptan (Külçe)
-		return fiyatlar.KulceAltinAlis, nil
+		return fiyatlar.GramToptanAltinAlis, nil
 	case "HH_T": // Has Toptan (24 ayar)
 		return fiyatlar.Gram24AyarAlis, nil
 	// Döviz kodları
