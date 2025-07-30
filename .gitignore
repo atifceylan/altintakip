@@ -40,3 +40,6 @@ altintakip.db
 
 # Log files
 *.log
+
+# Temporary files
+.DS_Store
