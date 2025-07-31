@@ -23,6 +23,7 @@ type CinsItem struct {
 
 // Sabit değerler
 var (
+	appVersion = "v1.0.1"
 	turOptions = []string{"Altın", "Gümüş", "Döviz"}
 
 	birimOptions = []string{"gram", "adet", "kilogram", "ons"}
@@ -322,20 +323,26 @@ func (a *App) Run() error {
 		case 'e', 'E': // Ekleme
 			a.showAddForm()
 			return nil
-		case 'd', 'D': // Düzenleme
-			a.showEditForm()
+		case 'd', 'D': // Düzenleme - sadece envanter tablosunda
+			current := a.app.GetFocus()
+			if current == a.table {
+				a.showEditForm()
+			}
 			return nil
-		case 's', 'S': // Silme
-			a.showDeleteConfirm()
+		case 's', 'S': // Silme - sadece envanter tablosunda
+			current := a.app.GetFocus()
+			if current == a.table {
+				a.showDeleteConfirm()
+			}
 			return nil
 		}
 		return event
 	})
 
 	// Layout oluştur - 3 tablo dikey olarak + alt boşluk
-	headerText := "🏦 ALTIN TAKİP - TUI (F5: Yenile, Tab: Tablolar Arası Geçiş, E: Ekle, D: Düzenle, S: Sil, Ctrl+Q: Çıkış)"
+	headerText := fmt.Sprintf("🏦 ALTIN TAKİP - %s (F5: Yenile, Tab: Tablolar Arası Geçiş, E: Ekle, D: Düzenle, S: Sil, Ctrl+Q: Çıkış)", appVersion)
 	if a.isListMode {
-		headerText = "🏦 ALTIN TAKİP - LİSTE MODU (OFFLINE - Tab: Tablolar Arası Geçiş, E: Ekle, D: Düzenle, S: Sil, Ctrl+Q: Çıkış)"
+		headerText = fmt.Sprintf("🏦 ALTIN TAKİP - %s (OFFLINE MOD - Tab: Tablolar Arası Geçiş, E: Ekle, D: Düzenle, S: Sil, Ctrl+Q: Çıkış)", appVersion)
 	}
 
 	a.mainFlex = tview.NewFlex().SetDirection(tview.FlexRow).
@@ -347,6 +354,10 @@ func (a *App) Run() error {
 			tview.NewFlex().SetDirection(tview.FlexColumn).
 				AddItem(a.table, 0, 1, true).
 				AddItem(a.envanterScrollIndicator, 1, 0, false), 0, 3, false).
+		AddItem(tview.NewTextView().
+			SetText("ENVANTER TOPLAMLARI").
+			SetTextAlign(tview.AlignLeft).
+			SetTextColor(tcell.ColorYellow), 1, 0, false).
 		AddItem(
 			tview.NewFlex().SetDirection(tview.FlexColumn).
 				AddItem(a.grupTable, 0, 1, false).
@@ -706,7 +717,7 @@ func (a *App) showAddForm() {
 	// Ana form container
 	mainForm := form
 
-	mainForm.SetTitle(" ➕ YENİ ENVANTER EKLE (Tarih: DD.MM.YYYY, Sayılar: 1234,56 veya 1234.56, Güncel Fiyat boş bırakılabilir) ").SetBorder(true)
+	mainForm.SetTitle(" ➕ YENİ EKLE (Formatlar: Tarih: GG.AA.YYYY, Sayılar: 1234.56) ").SetBorder(true)
 	mainForm.SetBackgroundColor(tcell.ColorBlack)
 
 	// Modal olarak göster - daha büyük boyut
@@ -714,7 +725,7 @@ func (a *App) showAddForm() {
 		AddItem(nil, 0, 1, false).
 		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
 			AddItem(nil, 0, 1, false).
-			AddItem(mainForm, 16, 1, true).
+			AddItem(mainForm, 20, 1, true).
 			AddItem(nil, 0, 1, false), 80, 1, true).
 		AddItem(nil, 0, 1, false)
 
@@ -743,7 +754,7 @@ func (a *App) saveNewEnvanterSingle(form *tview.Form, turDropdown, cinsDropdown,
 	// Alış tarihini parse et
 	alisTarihiTime, err := a.parseAlisTarihi(alisTarihi)
 	if err != nil {
-		a.showMessageWithReturn("Alış tarihi geçerli formatta olmalı! (DD.MM.YYYY)", form)
+		a.showMessageWithReturn("Alış tarihi geçerli formatta olmalı! (GG.AA.YYYY)", form)
 		return
 	}
 
@@ -781,7 +792,7 @@ func (a *App) updateEnvanterSingle(form *tview.Form, turDropdown, cinsDropdown, 
 	// Alış tarihini parse et
 	alisTarihiTime, err := a.parseAlisTarihi(alisTarihi)
 	if err != nil {
-		a.showMessageWithReturn("Alış tarihi geçerli formatta olmalı! (DD.MM.YYYY)", form)
+		a.showMessageWithReturn("Alış tarihi geçerli formatta olmalı! (GG.AA.YYYY)", form)
 		return
 	}
 
@@ -937,7 +948,7 @@ func (a *App) showEditForm() {
 	// Ana form container
 	mainForm := form
 
-	mainForm.SetTitle(" ✏️ ENVANTER DÜZENLE (Tarih: DD.MM.YYYY, Sayılar: 1234,56 veya 1234.56, Güncel Fiyat boş bırakılabilir) ").SetBorder(true)
+	mainForm.SetTitle(" ✏️ DÜZENLE (Formatlar: Tarih: GG.AA.YYYY, Sayılar: 1234.56)").SetBorder(true)
 	mainForm.SetBackgroundColor(tcell.ColorBlack)
 
 	// Modal olarak göster - daha büyük boyut
@@ -945,7 +956,7 @@ func (a *App) showEditForm() {
 		AddItem(nil, 0, 1, false).
 		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
 			AddItem(nil, 0, 1, false).
-			AddItem(mainForm, 16, 1, true).
+			AddItem(mainForm, 20, 1, true).
 			AddItem(nil, 0, 1, false), 80, 1, true).
 		AddItem(nil, 0, 1, false)
 
