@@ -79,10 +79,10 @@ func Execute() {
 	// TUI uygulamasını başlat
 	app := tui.NewApp()
 	if isListMode {
-		fmt.Printf("Liste modu: Sadece veritabanındaki veriler gösterilecek (fiyat güncellenmeyecek)...")
+		fmt.Printf("Liste modu: Sadece veritabanındaki veriler gösterilecek (fiyat güncellenmeyecek)...\n")
 		app.SetListMode(true)
 	} else {
-		fmt.Printf("Uygulama başlatılıyor, güncel fiyatlar çekiliyor...")
+		fmt.Printf("Uygulama başlatılıyor, güncel fiyatlar çekiliyor...\n")
 		app.SetListMode(false)
 	}
 
