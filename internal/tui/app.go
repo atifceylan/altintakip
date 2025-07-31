@@ -143,7 +143,7 @@ func (a *App) Run() error {
 			log.Printf("Güncel fiyatlar başarıyla güncellendi")
 		}
 
-		// Otomatik güncelleme başlat (5 dakika) - sadece liste modu değilse
+		// Otomatik güncelleme başlat (dakikada bir) - liste modu değilse
 		a.startAutoUpdate()
 	} else {
 		log.Printf("Liste modu: Sadece veritabanındaki veriler gösterilecek")
@@ -1186,9 +1186,9 @@ func (a *App) deleteEnvanter(row int) {
 	}()
 }
 
-// startAutoUpdate otomatik fiyat güncellemeyi başlatır (5 dakikada bir)
+// startAutoUpdate otomatik fiyat güncellemeyi başlatır (dakikada bir)
 func (a *App) startAutoUpdate() {
-	a.updateTicker = time.NewTicker(5 * time.Minute)
+	a.updateTicker = time.NewTicker(1 * time.Minute)
 
 	go func() {
 		for {
@@ -1199,7 +1199,7 @@ func (a *App) startAutoUpdate() {
 				if err != nil {
 					log.Printf("UYARI: Otomatik fiyat güncelleme başarısız: %v", err)
 				} else {
-					log.Printf("Otomatik fiyat güncelleme başarılı")
+					//log.Printf("Otomatik fiyat güncelleme başarılı")
 					// UI'yi güncelle
 					a.app.QueueUpdateDraw(func() {
 						a.loadData()
@@ -1214,7 +1214,7 @@ func (a *App) startAutoUpdate() {
 		}
 	}()
 
-	log.Printf("Otomatik fiyat güncelleme başlatıldı (5 dakikada bir)")
+	log.Printf("Otomatik fiyat güncelleme başlatıldı (dakikada bir)")
 }
 
 // stopAutoUpdate otomatik fiyat güncellemeyi durdurur
