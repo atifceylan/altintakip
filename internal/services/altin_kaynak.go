@@ -1,7 +1,7 @@
 package services
 
 import (
-	"encoding/xml"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -16,285 +16,148 @@ type AltinKaynakService struct {
 	client  *http.Client
 }
 
-// AltinFiyatlari API'den gelen fiyat bilgilerini tutar
+// RestPriceItem REST API'den gelen tek bir ürün fiyat bilgisi
+type RestPriceItem struct {
+	ID                int      `json:"Id"`
+	Kod               string   `json:"Kod"`
+	Aciklama          string   `json:"Aciklama"`
+	Alis              string   `json:"Alis"`
+	Satis             string   `json:"Satis"`
+	GuncellenmeZamani string   `json:"GuncellenmeZamani"`
+	Durum             *string  `json:"Durum"`
+	Main              bool     `json:"Main"`
+	DataGroup         int      `json:"DataGroup"`
+	Change            *float64 `json:"Change"`
+	MobilAciklama     string   `json:"MobilAciklama"`
+	WebGroup          *int     `json:"WebGroup"`
+	WidgetAciklama    string   `json:"WidgetAciklama"`
+}
+
+// AltinFiyatlari REST API'den gelen fiyat bilgilerini tutar
 type AltinFiyatlari struct {
-	CeyrekAltinAlis      float64
-	CeyrekAltinSatis     float64
-	YarimAltinAlis       float64
-	YarimAltinSatis      float64
-	TamAltinAlis         float64
-	TamAltinSatis        float64
-	KulceAltinAlis       float64
-	KulceAltinSatis      float64
-	GramToptanAltinAlis  float64
-	GramToptanAltinSatis float64
-	Gram22AyarAlis       float64
-	Gram22AyarSatis      float64
-	Bilezik22AyarAlis    float64
-	Bilezik22AyarSatis   float64
-	Gram22HurdaAyarAlis  float64
-	Gram22HurdaAyarSatis float64
-	Gram24AyarAlis       float64
-	Gram24AyarSatis      float64
-	USDKurus             float64
-	EURKurus             float64
-	GBPKurus             float64
-	GuncellemeTarihi     time.Time
-}
-
-// XML Response yapıları
-type envelope struct {
-	XMLName xml.Name `xml:"Envelope"`
-	Body    body     `xml:"Body"`
-}
-
-type body struct {
-	XMLName          xml.Name         `xml:"Body"`
-	GoldResponse     goldResponse     `xml:"GetGoldResponse"`
-	CurrencyResponse currencyResponse `xml:"GetCurrencyResponse"`
-}
-
-type goldResponse struct {
-	XMLName xml.Name `xml:"GetGoldResponse"`
-	Result  string   `xml:"GetGoldResult"`
-}
-
-type currencyResponse struct {
-	XMLName xml.Name `xml:"GetCurrencyResponse"`
-	Result  string   `xml:"GetCurrencyResult"`
-}
-
-// Kurlar API'den gelen kurlar XML yapısı
-type Kurlar struct {
-	XMLName xml.Name `xml:"Kurlar"`
-	Kurlar  []Kur    `xml:"Kur"`
-}
-
-type Kur struct {
-	Kod               string `xml:"Kod"`
-	Aciklama          string `xml:"Aciklama"`
-	Alis              string `xml:"Alis"`
-	Satis             string `xml:"Satis"`
-	GuncellenmeZamani string `xml:"GuncellenmeZamani"`
+	// REST API'den gelen tüm veriler
+	GoldItems        []RestPriceItem `json:"gold_items"`
+	CurrencyItems    []RestPriceItem `json:"currency_items"`
+	GuncellemeTarihi time.Time
 }
 
 // NewAltinKaynakService yeni servis instance'ı oluşturur
 func NewAltinKaynakService() *AltinKaynakService {
 	return &AltinKaynakService{
-		baseURL: "http://data.altinkaynak.com/DataService.asmx",
+		baseURL: "https://rest.altinkaynak.com",
 		client: &http.Client{
 			Timeout: 30 * time.Second,
 		},
 	}
 }
 
-// GetFiyatlar altın ve döviz fiyatlarını çeker
+// GetFiyatlar altın ve döviz fiyatlarını REST API'den çeker
 func (s *AltinKaynakService) GetFiyatlar() (*AltinFiyatlari, error) {
 	fiyatlar := &AltinFiyatlari{
 		GuncellemeTarihi: time.Now(),
 	}
 
 	// Altın fiyatlarını çek
-	altinData, err := s.callSOAPService("GetGold")
+	goldItems, err := s.getRestData("/Gold.json")
 	if err != nil {
 		return nil, fmt.Errorf("altın fiyatları çekme hatası: %w", err)
 	}
+	fiyatlar.GoldItems = goldItems
 
 	// Döviz fiyatlarını çek
-	dovizData, err := s.callSOAPService("GetCurrency")
+	currencyItems, err := s.getRestData("/Currency.json")
 	if err != nil {
 		return nil, fmt.Errorf("döviz fiyatları çekme hatası: %w", err)
 	}
-
-	// Altın fiyatlarını parse et
-	err = s.parseAltinData(altinData, fiyatlar)
-	if err != nil {
-		return nil, fmt.Errorf("altın verisi parse hatası: %w", err)
-	}
-
-	// Döviz fiyatlarını parse et
-	err = s.parseDovizData(dovizData, fiyatlar)
-	if err != nil {
-		return nil, fmt.Errorf("döviz verisi parse hatası: %w", err)
-	}
+	fiyatlar.CurrencyItems = currencyItems
 
 	return fiyatlar, nil
 }
 
-// callSOAPService belirtilen action ile SOAP servisi çağırır
-func (s *AltinKaynakService) callSOAPService(action string) (string, error) {
-	// SOAP request body
-	soapBody := fmt.Sprintf(`<?xml version="1.0" encoding="utf-8"?>
-<soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
-  <soap12:Header>
-    <AuthHeader xmlns="http://data.altinkaynak.com/">
-      <Username>AltinkaynakWebServis</Username>
-      <Password>AltinkaynakWebServis</Password>
-    </AuthHeader>
-  </soap12:Header>
-  <soap12:Body>
-    <%s xmlns="http://data.altinkaynak.com/" />
-  </soap12:Body>
-</soap12:Envelope>`, action)
+// getRestData REST API'den JSON veri çeker
+func (s *AltinKaynakService) getRestData(endpoint string) ([]RestPriceItem, error) {
+	url := s.baseURL + endpoint
 
-	req, err := http.NewRequest("POST", s.baseURL, strings.NewReader(soapBody))
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return "", fmt.Errorf("HTTP request oluşturma hatası: %w", err)
+		return nil, fmt.Errorf("HTTP request oluşturma hatası: %w", err)
 	}
 
-	req.Header.Set("Content-Type", "text/xml; charset=utf-8")
-	req.Header.Set("SOAPAction", fmt.Sprintf("http://data.altinkaynak.com/%s", action))
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", "AltinTakip/1.0")
 
 	resp, err := s.client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("API çağrısı başarısız: %w", err)
+		return nil, fmt.Errorf("API çağrısı başarısız: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("API hatası: HTTP %d", resp.StatusCode)
+		return nil, fmt.Errorf("API hatası: HTTP %d", resp.StatusCode)
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("response okuma hatası: %w", err)
+		return nil, fmt.Errorf("response okuma hatası: %w", err)
 	}
 
-	var env envelope
-	err = xml.Unmarshal(body, &env)
+	var items []RestPriceItem
+	err = json.Unmarshal(body, &items)
 	if err != nil {
-		return "", fmt.Errorf("XML parse hatası: %w", err)
+		return nil, fmt.Errorf("JSON parse hatası: %w", err)
 	}
 
-	// Action'a göre doğru response'u döner
-	switch action {
-	case "GetGold":
-		return env.Body.GoldResponse.Result, nil
-	case "GetCurrency":
-		return env.Body.CurrencyResponse.Result, nil
-	default:
-		return "", fmt.Errorf("bilinmeyen action: %s", action)
-	}
+	return items, nil
 }
 
-// parseAltinData altın fiyat verisini parse eder
-func (s *AltinKaynakService) parseAltinData(dataStr string, fiyatlar *AltinFiyatlari) error {
-	// HTML encoded XML string'ini decode et
-	dataStr = strings.ReplaceAll(dataStr, "&lt;", "<")
-	dataStr = strings.ReplaceAll(dataStr, "&gt;", ">")
-	dataStr = strings.ReplaceAll(dataStr, "&quot;", "\"")
-	dataStr = strings.ReplaceAll(dataStr, "&amp;", "&")
-
-	// XML'i parse et
-	var kurlar Kurlar
-	err := xml.Unmarshal([]byte(dataStr), &kurlar)
-	if err != nil {
-		return fmt.Errorf("XML unmarshal hatası: %w", err)
-	}
-
-	// Altın kurlarını map et
-	for _, kur := range kurlar.Kurlar {
-		alis := parseFloat(kur.Alis)
-		satis := parseFloat(kur.Satis)
-
-		switch kur.Kod {
-		case "B": // 22 Ayar Bilezik (Gram)
-			fiyatlar.Bilezik22AyarAlis = alis
-			fiyatlar.Bilezik22AyarSatis = satis
-		case "B_T": // 22 Ayar Hurda
-			fiyatlar.Gram22HurdaAyarAlis = alis
-			fiyatlar.Gram22HurdaAyarSatis = satis
-		case "C": // Çeyrek Altın
-			fiyatlar.CeyrekAltinAlis = alis
-			fiyatlar.CeyrekAltinSatis = satis
-		case "CH_T": // Külçe Toptan
-			fiyatlar.KulceAltinAlis = alis
-			fiyatlar.KulceAltinSatis = satis
-		case "Y": // Yarım Altın
-			fiyatlar.YarimAltinAlis = alis
-			fiyatlar.YarimAltinSatis = satis
-		case "T": // Tam Altın (Teklik)
-			fiyatlar.TamAltinAlis = alis
-			fiyatlar.TamAltinSatis = satis
-		case "GA": // Gram Altın (22 ayar)
-			fiyatlar.Gram22AyarAlis = alis
-			fiyatlar.Gram22AyarSatis = satis
-		case "GAT": // Gram Toptan (Külçe)
-			fiyatlar.GramToptanAltinAlis = alis
-			fiyatlar.GramToptanAltinSatis = satis
-		case "HH_T": // Has Toptan (24 ayar)
-			fiyatlar.Gram24AyarAlis = alis
-			fiyatlar.Gram24AyarSatis = satis
-		}
-	}
-
-	return nil
-}
-
-// parseDovizData döviz kuru verisini parse eder
-func (s *AltinKaynakService) parseDovizData(dataStr string, fiyatlar *AltinFiyatlari) error {
-	// HTML encoded XML string'ini decode et
-	dataStr = strings.ReplaceAll(dataStr, "&lt;", "<")
-	dataStr = strings.ReplaceAll(dataStr, "&gt;", ">")
-	dataStr = strings.ReplaceAll(dataStr, "&quot;", "\"")
-	dataStr = strings.ReplaceAll(dataStr, "&amp;", "&")
-
-	// XML'i parse et
-	var kurlar Kurlar
-	err := xml.Unmarshal([]byte(dataStr), &kurlar)
-	if err != nil {
-		return fmt.Errorf("XML unmarshal hatası: %w", err)
-	}
-
-	// Döviz kurlarını map et
-	for _, kur := range kurlar.Kurlar {
-		alis := parseFloat(kur.Alis)
-
-		switch kur.Kod {
-		case "USD":
-			fiyatlar.USDKurus = alis
-		case "EUR":
-			fiyatlar.EURKurus = alis
-		case "GBP":
-			fiyatlar.GBPKurus = alis
-		}
-	}
-
-	return nil
-} // GetFiyatByType belirli bir ürün kodu için fiyat döner
+// GetFiyatByType belirli bir ürün kodu için fiyat döner
 func (s *AltinKaynakService) GetFiyatByType(fiyatlar *AltinFiyatlari, kod string) (float64, error) {
 	kod = strings.ToUpper(strings.TrimSpace(kod))
 
-	switch kod {
-	// Altın kodları
-	case "B": // 22 Ayar Bilezik
-		return fiyatlar.Bilezik22AyarAlis, nil
-	case "B_T": // 22 Ayar Hurda
-		return fiyatlar.Gram22HurdaAyarAlis, nil
-	case "C": // Çeyrek Altın
-		return fiyatlar.CeyrekAltinAlis, nil
-	case "CH_T": // Külçe Toptan
-		return fiyatlar.KulceAltinAlis, nil
-	case "Y": // Yarım Altın
-		return fiyatlar.YarimAltinAlis, nil
-	case "T": // Tam Altın (Teklik)
-		return fiyatlar.TamAltinAlis, nil
-	case "GA": // Gram Altın
-		return fiyatlar.Gram22AyarAlis, nil
-	case "GAT": // Gram Toptan (Külçe)
-		return fiyatlar.GramToptanAltinAlis, nil
-	case "HH_T": // Has Toptan (24 ayar)
-		return fiyatlar.Gram24AyarAlis, nil
-	// Döviz kodları
-	case "USD": // Amerikan Doları
-		return fiyatlar.USDKurus, nil
-	case "EUR": // Avrupa Para Birimi
-		return fiyatlar.EURKurus, nil
-	case "GBP": // İngiliz Sterlini
-		return fiyatlar.GBPKurus, nil
-	default:
-		return 0, fmt.Errorf("bilinmeyen ürün kodu: %s", kod)
+	// Altın verilerinde ara
+	for _, item := range fiyatlar.GoldItems {
+		if strings.ToUpper(item.Kod) == kod {
+			return parseFloat(item.Alis), nil
+		}
 	}
+
+	// Döviz verilerinde ara
+	for _, item := range fiyatlar.CurrencyItems {
+		if strings.ToUpper(item.Kod) == kod {
+			return parseFloat(item.Alis), nil
+		}
+	}
+
+	return 0, fmt.Errorf("bilinmeyen ürün kodu: %s", kod)
+}
+
+// GetAllItems tüm mevcut ürünleri MobilAciklama ile birlikte döner
+func (s *AltinKaynakService) GetAllItems(fiyatlar *AltinFiyatlari) []RestPriceItem {
+	var allItems []RestPriceItem
+	allItems = append(allItems, fiyatlar.GoldItems...)
+	allItems = append(allItems, fiyatlar.CurrencyItems...)
+	return allItems
+}
+
+// GetItemByCode belirli bir kod için ürün bilgisini döner
+func (s *AltinKaynakService) GetItemByCode(fiyatlar *AltinFiyatlari, kod string) (*RestPriceItem, error) {
+	kod = strings.ToUpper(strings.TrimSpace(kod))
+
+	// Altın verilerinde ara
+	for _, item := range fiyatlar.GoldItems {
+		if strings.ToUpper(item.Kod) == kod {
+			return &item, nil
+		}
+	}
+
+	// Döviz verilerinde ara
+	for _, item := range fiyatlar.CurrencyItems {
+		if strings.ToUpper(item.Kod) == kod {
+			return &item, nil
+		}
+	}
+
+	return nil, fmt.Errorf("ürün kodu bulunamadı: %s", kod)
 }
 
 // parseFloat string'i float64'e çevirir

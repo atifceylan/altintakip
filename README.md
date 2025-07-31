@@ -1,6 +1,6 @@
 # 🏦 Altın Takip - Kişisel Altın ve Döviz Envanter Takip Sistemi
 
-Bu uygulama, kişisel altın ve döviz envanterinizi takip etmenizi sağlayan bir TUI (Terminal User Interface) uygulamasıdır. SQLite veritabanı ve GORM ORM kullanarak verilerinizi güvenle saklar ve `http://data.altinkaynak.com/DataService.asmx` servisinden güncel fiyatları çekerek envanterinizin güncel değerini hesaplar.
+Bu uygulama, kişisel altın ve döviz envanterinizi takip etmenizi sağlayan bir TUI (Terminal User Interface) uygulamasıdır. SQLite veritabanı ve GORM ORM kullanarak verilerinizi güvenle saklar ve `https://rest.altinkaynak.com` REST API servisinden güncel fiyatları çekerek envanterinizin güncel değerini hesaplar.
 
 ![Image](https://github.com/user-attachments/assets/d8adee3a-7594-4c85-bd0d-9cdae19274a8)
 
@@ -175,9 +175,14 @@ Uygulama aşağıdaki varlık kodlarını destekler:
 - `EUR`: Avrupa Para Birimi
 - `GBP`: İngiliz Sterlini
 
-### SOAP API Entegrasyonu
+### REST API Entegrasyonu
 
-Uygulama `data.altinkaynak.com` servisinden SOAP protokolü ile veri çeker. Her varlık kodu için dinamik olarak API çağrısı yapar ve XML response'unu parse eder.
+Uygulama `rest.altinkaynak.com` servisinden JSON formatında veri çeker. API'den alınan veriler şunları içerir:
+
+- **Gold.json**: 54+ altın ürünü (gram altın, külçe, sikke vb.)
+- **Currency.json**: 34+ döviz kuru (ana ve parite kurları)
+- **MobilAciklama**: Ürün görünen adları
+- **Kod**: API eşleştirme kodları
 
 ## 🎨 Özellikler
 

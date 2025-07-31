@@ -23,26 +23,69 @@ type CinsItem struct {
 
 // Sabit değerler
 var (
-	turOptions = []string{"Altın", "Döviz"}
+	turOptions = []string{"Altın", "Gümüş", "Döviz"}
 
 	birimOptions = []string{"gram", "adet", "kilogram", "ons"}
 
-	// Cins seçenekleri ve kod eşleştirmeleri birleşik yapı
-	cinsMapping = map[string][]CinsItem{
+	// kod eşleştirmeleri REST API'den yüklenecek
+	cinsMapping = map[string][]CinsItem{}
+
+	// Fallback mapping (REST API kodları ve MobilAciklama ile statik olarak kullanılıyor)
+	fallbackCinsMapping = map[string][]CinsItem{
 		"Altın": {
-			{"24 Ayar Kesme", "CH_T"},
+			// Ana gram/külçe altınlar (DataGroup=2, Main=true)
+			{"Has Altın", "HH"},
+			{"Külçe / Kesme", "CH"},
 			{"24 Ayar Gram", "GA"},
-			{"Külçe Altın", "GAT"},
-			{"22 Ayar Bilezik", "B"},
-			{"22 Ayar Gram", "B_T"},
-			{"Çeyrek Altın", "C"},
-			{"Yarım Altın", "Y"},
-			{"Tam Altın", "T"},
+			{"22 Ayar Gram", "GAT22"},
+			{"22 Ayar Hurda / Bilezik", "B"},
+
+			// Ana sikkeler (DataGroup=8, Main=true)
+			{"Çeyrek", "C"},
+			{"Yarım", "Y"},
+			{"Tam (Teklik)", "T"},
+			{"Gremse", "G"},
+			{"Ata Cumhuriyet", "A"},
+			{"Reşat", "R"},
+			{"Hamit", "H"},
+
+			// Eski sikkeler (DataGroup=9)
+			{"Eski Çeyrek", "EC"},
+			{"Eski Yarım", "EY"},
+			{"Eski Tam", "ET"},
+			{"Eski Gremse", "EG"},
+			{"Eski Ata Cumhuriyet", "EA"},
+
+			// Diğer ayarlar
+			{"18 Ayar", "18"},
+			{"14 Ayar", "14"},
+		},
+		"Gümüş": {
+			// Gümüş ürünleri (DataGroup=7)
+			{"Granül Gümüş", "SG"},
+			{"Külçe (50 GR)", "AG50"},
+			{"Külçe (500 GR)", "AG500"},
+			{"Külçe (1 KG)", "AG1000"},
 		},
 		"Döviz": {
-			{"USD", "USD"},
-			{"EUR", "EUR"},
-			{"GBP", "GBP"},
+			// Ana dövizler (DataGroup=1, Main=true)
+			{"Dolar (USD)", "USD"},
+			{"EURO", "EUR"},
+			{"Sterlin (GBP)", "GBP"},
+
+			// Diğer popüler dövizler
+			{"İsviçre Frangı", "CHF"},
+			{"Japon Yeni", "JPY"},
+			{"S. Arabistan Riyali", "SAR"},
+			{"Avustralya Doları", "AUD"},
+			{"Kanada Doları", "CAD"},
+			{"Rus Rublesi", "RUB"},
+			{"Azerbaycan Manatı", "AZN"},
+			{"Çin Yuanı", "CNY"},
+			{"Romanya Leyi", "RON"},
+			{"B.A.E. Dirhemi", "AED"},
+			{"Bulgar Levası", "BGN"},
+			{"Kuweyt Dinarı", "KWD"},
 		},
 	}
 )
@@ -87,6 +130,9 @@ func (a *App) SetListMode(listMode bool) {
 
 // Run TUI uygulamasını başlatır
 func (a *App) Run() error {
+	// Ürün mappinglerini yükle
+	a.loadProductMappings()
+
 	// Liste modu değilse güncel fiyatları çek
 	if !a.isListMode {
 		log.Printf("Uygulama başlatılıyor, güncel fiyatlar getiriliyor...")
@@ -391,8 +437,14 @@ func (a *App) loadData() {
 			karZararPrefix = ""
 		}
 
+		// Kod alanından cins ismini bul, boş kod durumunda veritabanındaki cins ismini kullan
+		cinsIsmi := getCinsNameFromCode(envanter.Kod)
+		if cinsIsmi == "" {
+			cinsIsmi = envanter.Cins // Boş kod durumunda veritabanındaki cins ismini kullan
+		}
+
 		a.table.SetCell(row+1, 0, tview.NewTableCell(envanter.Tur))
-		a.table.SetCell(row+1, 1, tview.NewTableCell(envanter.Cins))
+		a.table.SetCell(row+1, 1, tview.NewTableCell(cinsIsmi))
 		a.table.SetCell(row+1, 2, tview.NewTableCell(fmt.Sprintf("%s %s", formatQuantity(envanter.Miktar, envanter.Birim), envanter.Birim)))
 		a.table.SetCell(row+1, 3, tview.NewTableCell(envanter.AlisTarihi.Format("02.01.2006")))
 		a.table.SetCell(row+1, 4, tview.NewTableCell(formatMoney(envanter.AlisFiyati)))
@@ -448,10 +500,16 @@ func (a *App) loadGrupData() {
 	}
 
 	var grupSlice []GrupVeri
-	for _, veri := range gruplar {
+	for kod, veri := range gruplar {
+		// Kod alanından cins ismini bul, boş kod durumunda veritabanındaki cins ismini kullan
+		cinsIsmi := getCinsNameFromCode(kod)
+		if cinsIsmi == "" {
+			cinsIsmi = veri["cins"].(string) // Boş kod durumunda veritabanındaki cins ismini kullan
+		}
+
 		grupSlice = append(grupSlice, GrupVeri{
 			Tur:     veri["tur"].(string),
-			Cins:    veri["cins"].(string),
+			Cins:    cinsIsmi, // Kod alanından çevrilen veya veritabanındaki cins ismi
 			Veriler: veri,
 		})
 	}
@@ -478,7 +536,7 @@ func (a *App) loadGrupData() {
 		}
 
 		a.grupTable.SetCell(row, 0, tview.NewTableCell(veri["tur"].(string)))
-		a.grupTable.SetCell(row, 1, tview.NewTableCell(veri["cins"].(string)))
+		a.grupTable.SetCell(row, 1, tview.NewTableCell(grupItem.Cins)) // Kod alanından çevrilen cins ismi
 		a.grupTable.SetCell(row, 2, tview.NewTableCell(formatQuantity(veri["toplam_miktar"].(float64), veri["birim"].(string))))
 		a.grupTable.SetCell(row, 3, tview.NewTableCell(veri["birim"].(string)))
 		a.grupTable.SetCell(row, 4, tview.NewTableCell(formatMoney(veri["ortalama_alis_fiyati"].(float64))))
@@ -574,6 +632,23 @@ func getCinsCode(cinsName string) string {
 		}
 	}
 	return ""
+}
+
+// getCinsNameFromCode API kodundan cins ismini bulur
+func getCinsNameFromCode(code string) string {
+	// Boş kod durumunda kodu döndür (veritabanında eski kayıtlar için)
+	if code == "" {
+		return ""
+	}
+
+	for _, items := range cinsMapping {
+		for _, item := range items {
+			if item.Code == code {
+				return item.Name
+			}
+		}
+	}
+	return code // Eğer bulunamazsa kodu döndür
 }
 
 // showAddForm yeni envanter ekleme formunu gösterir
@@ -769,7 +844,11 @@ func (a *App) showEditForm() {
 
 	// Veritabanındaki orijinal değerleri kullan (precision kaybı olmadan)
 	tur := envanter.Tur
-	cins := envanter.Cins
+	// Kod alanından cins ismini bul, boş kod durumunda veritabanındaki cins ismini kullan
+	cins := getCinsNameFromCode(envanter.Kod)
+	if cins == "" {
+		cins = envanter.Cins // Boş kod durumunda veritabanındaki cins ismini kullan
+	}
 	birim := envanter.Birim
 
 	// Miktarı decimal kullanarak hassas şekilde formatla
@@ -820,7 +899,7 @@ func (a *App) showEditForm() {
 
 	// Kod alanı (gizli) - mevcut kodu belirle
 	var selectedKod string
-	selectedKod = getCinsCode(cins)
+	selectedKod = envanter.Kod // Doğrudan kod alanını kullan
 
 	// Tür değiştiğinde Cins seçeneklerini güncelle
 	turDropdown.SetSelectedFunc(func(text string, index int) {
@@ -1285,4 +1364,15 @@ func (a *App) updateScrollIndicators() {
 
 		a.grupScrollIndicator.SetText(indicator)
 	}
+}
+
+// loadProductMappings ürün mappinglerini statik olarak yükler
+func (a *App) loadProductMappings() {
+	// Artık tüm mappingler statik - API'den yükleme yapmıyoruz
+	cinsMapping = fallbackCinsMapping
+
+	altinCount := len(fallbackCinsMapping["Altın"])
+	dovizCount := len(fallbackCinsMapping["Döviz"])
+	gumusCount := len(fallbackCinsMapping["Gümüş"])
+	log.Printf("Statik ürün mappingleri yüklendi: %d altın, %d döviz, %d gümüş ürünü", altinCount, dovizCount, gumusCount)
 }
