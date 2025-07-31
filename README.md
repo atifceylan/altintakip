@@ -109,7 +109,6 @@ Uygulama şu bölümlerden oluşur:
 2. **Grup Tablosu**: Kod bazlı gruplandırılmış veriler
 3. **Durum Çubuğu**: Güncel durum bilgileri
 4. **Özet Paneli**: Toplam değerler ve istatistikler
-5. **Yardım Modal**: Klavye kısayolları rehberi
 
 ### İlk Çalıştırma
 
